@@ -53,9 +53,13 @@ def build_ppo_argv(cli: argparse.Namespace) -> list[str]:
         "--no-upload-model",
         "--no-capture-video",
         "--cuda" if cli.cuda else "--no-cuda",
+        "--ent-coef", str(cli.ent_coef),
+        "--init-logstd-offset", str(cli.init_logstd_offset),
     ]
     if cli.init_checkpoint:
         argv += ["--init-checkpoint", str(cli.init_checkpoint)]
+    if cli.algorithm == "rpo":
+        argv += ["--rpo-alpha", str(cli.rpo_alpha)]
     return argv
 
 
@@ -79,6 +83,14 @@ def find_normalize_observation(vec_env) -> gym.wrappers.NormalizeObservation:
 def find_task_version(vec_env) -> str | None:
     """从环境里读 task_version（PandaGrasp-v1 = grasp_quality_v1），写进 checkpoint metadata。"""
     return getattr(find_task_env(vec_env), "task_version", None)
+
+
+def _to_cpu_tensor(value):
+    if value is None:
+        return None
+    if isinstance(value, torch.Tensor):
+        return value.detach().cpu().clone()
+    return torch.as_tensor(value)
 
 
 def save_checkpoint(training: dict, cli: argparse.Namespace, warm_start: dict | None) -> Path:
@@ -113,6 +125,17 @@ def save_checkpoint(training: dict, cli: argparse.Namespace, warm_start: dict | 
         "task_version": task_version,
         "reward_version": reward_version,
         "quality_reward": quality_reward,
+        "algorithm": cli.algorithm.upper(),
+        "rpo_alpha": float(cli.rpo_alpha) if cli.algorithm == "rpo" else None,
+        "experiment_id": cli.experiment_id or cli.exp_name,
+        "ent_coef": float(cli.ent_coef),
+        "init_logstd_offset": float(cli.init_logstd_offset),
+        "actor_logstd_initial": _to_cpu_tensor(training.get("initial_actor_logstd")),
+        "actor_logstd_final": _to_cpu_tensor(training.get("final_actor_logstd")),
+        "parent_actor_logstd": (None if warm_start is None
+                                else _to_cpu_tensor(warm_start.get("parent_actor_logstd"))),
+        "action_distribution": "diagonal_gaussian_state_independent_std",
+        "action_clip_enabled": True,
         "table_contact_constraint": {
             "enabled": task_env.table_contact_failure_mode != "disabled",
             "mode": task_env.table_contact_failure_mode,
@@ -167,6 +190,16 @@ def main() -> None:
     parser.add_argument("--init-checkpoint", default=None,
                         help="可选: 用已有 checkpoint warm-start（恢复网络权重 + obs 归一化统计, "
                              "NormalizeReward/optimizer 全部重置）")
+    parser.add_argument("--ent-coef", type=float, default=0.0,
+                        help="PPO entropy coefficient（默认 0.0, 与官方 CleanRL 一致）")
+    parser.add_argument("--init-logstd-offset", type=float, default=0.0,
+                        help="warm-start 后对 actor_logstd 加常数偏移（只作用于本次 run）")
+    parser.add_argument("--experiment-id", default=None,
+                        help="实验标签, 写入 checkpoint metadata（默认用 exp-name）")
+    parser.add_argument("--algorithm", choices=("ppo", "rpo"), default="ppo",
+                        help="ppo = ppo_continuous_action.py（默认）, rpo = rpo_continuous_action.py")
+    parser.add_argument("--rpo-alpha", type=float, default=0.5,
+                        help="RPO 的 alpha（官方 CleanRL 默认 0.5），仅 --algorithm rpo 时生效")
     cli = parser.parse_args()
 
     known_env_ids = (*envs.TASK_ENV_IDS, *envs.STRICT_ENV_KWARGS, *envs.CURRICULUM_ENV_KWARGS)
@@ -183,12 +216,14 @@ def main() -> None:
             "parent_checkpoint": str(init_path),
             "parent_env_id": parent.get("env_id"),
             "parent_task_version": parent.get("task_version"),
+            "parent_actor_logstd": parent.get("model_state_dict", {}).get("actor_logstd"),
         }
         print(f"warm-start 来源: {init_path} "
               f"(env_id={warm_start['parent_env_id']}, "
               f"task_version={warm_start['parent_task_version']})", flush=True)
 
-    ppo_path = PROJECT_ROOT / "ppo_continuous_action.py"
+    ppo_path = PROJECT_ROOT / ("rpo_continuous_action.py" if cli.algorithm == "rpo"
+                               else "ppo_continuous_action.py")
     default_args = Args()
     if cli.total_timesteps < default_args.num_steps:
         raise SystemExit("total-timesteps 必须至少覆盖一个完整 rollout (num-steps=2048)")
@@ -210,6 +245,10 @@ def main() -> None:
     if warm_start is not None:
         print(f"  warm_start=True (parent={warm_start['parent_env_id']}), "
               f"optimizer_resumed=False")
+    print(f"  ent_coef={cli.ent_coef}, init_logstd_offset={cli.init_logstd_offset}, "
+          f"experiment_id={cli.experiment_id or cli.exp_name}")
+    print(f"  algorithm={cli.algorithm.upper()}"
+          + (f", rpo_alpha={cli.rpo_alpha}" if cli.algorithm == "rpo" else ""))
 
 
 if __name__ == "__main__":

@@ -40,6 +40,8 @@ class Args:
     """the user or org name of the model repository from the Hugging Face Hub"""
     init_checkpoint: str = None
     """optional checkpoint path: warm-start network weights + NormalizeObservation statistics"""
+    init_logstd_offset: float = 0.0
+    """optional additive offset applied to actor_logstd right after warm-start (before first rollout)"""
 
     # Algorithm specific arguments
     env_id: str = "HalfCheetah-v4"
@@ -208,6 +210,12 @@ if __name__ == "__main__":
     if init_state_dict is not None:
         agent.load_state_dict(init_state_dict)
         print("warm-start: 已加载 policy/value 网络权重 (optimizer 保持全新)", flush=True)
+    if init_state_dict is not None and args.init_logstd_offset != 0.0:
+        with torch.no_grad():
+            agent.actor_logstd.add_(float(args.init_logstd_offset))
+        print(f"warm-start: actor_logstd += {args.init_logstd_offset:+.3f} "
+              f"(仅本次 run, 不写回 parent checkpoint)", flush=True)
+    initial_actor_logstd = agent.actor_logstd.detach().clone()
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
@@ -377,5 +385,6 @@ if __name__ == "__main__":
             repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
             push_to_hub(args, episodic_returns, repo_id, "PPO", f"runs/{run_name}", f"videos/{run_name}-eval")
 
+    final_actor_logstd = agent.actor_logstd.detach().clone()
     envs.close()
     writer.close()
