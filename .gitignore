@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Training results
+runs/
+videos/
+
+# Model checkpoints
+*.pt
+*.pth
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+.env
+*.key

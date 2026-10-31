@@ -1,0 +1,66 @@
+<mujoco model="panda pick place">
+  <!-- 我们自己的任务场景: 复用只读的官方 panda.xml, 不改动 assets/robots/franka_panda/ 下任何文件。 -->
+  <include file="../robots/franka_panda/panda.xml"/>
+
+  <!-- panda.xml 里的 meshdir="assets" 会相对"主文件"所在目录解析，跨目录 include 时
+       需要在这里重新指定 mesh 目录，否则会去找 assets/scenes/assets/*.stl。 -->
+  <compiler meshdir="../robots/franka_panda/assets"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="120" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+    <material name="table_mat" rgba="0.6 0.45 0.3 1"/>
+    <material name="cube_mat" rgba="0.9 0.25 0.2 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- 桌子: 桌面(geom name="table") + 4 条简单 box 腿; 桌面顶面 z=0.40 -->
+    <body name="table_body" pos="0.60 0 0.375">
+      <geom name="table" type="box" size="0.25 0.25 0.025" material="table_mat"
+        friction="1.0 0.005 0.0001"/>
+    </body>
+    <body name="table_leg_body" pos="0.60 0 0.175">
+      <geom name="table_leg_1" type="box" pos=" 0.22  0.22 0" size="0.02 0.02 0.175" material="table_mat"/>
+      <geom name="table_leg_2" type="box" pos=" 0.22 -0.22 0" size="0.02 0.02 0.175" material="table_mat"/>
+      <geom name="table_leg_3" type="box" pos="-0.22  0.22 0" size="0.02 0.02 0.175" material="table_mat"/>
+      <geom name="table_leg_4" type="box" pos="-0.22 -0.22 0" size="0.02 0.02 0.175" material="table_mat"/>
+    </body>
+
+    <!-- cube: 4.5cm 自由方块, freejoint = 3 平移 + 四元数旋转 -->
+    <body name="cube" pos="0.62 0 0.46">
+      <freejoint name="cube_freejoint"/>
+      <geom name="cube_geom" type="box" size="0.0225 0.0225 0.0225" mass="0.05"
+        material="cube_mat" friction="1.0 0.005 0.0001"/>
+    </body>
+
+    <!-- goal: 纯 site, 不参与碰撞, 只作为目标位置标记 -->
+    <site name="goal" pos="0.62 -0.15 0.402" type="sphere" size="0.02" rgba="0.1 0.9 0.2 0.8"/>
+
+    <!-- 仅用于 viewer / 录像 / debug, 不进入 observation -->
+    <camera name="overview_camera" pos="1.25 -1.05 1.05"
+      quat="0.813996 0.503424 0.152424 0.246458"/>
+  </worldbody>
+
+  <!-- home pose: 前 9 个分量照抄官方 panda.xml 的 key "home"
+       (qpos="0 0 0 -1.57079 0 1.57079 -0.7853 0.04 0.04", ctrl 最后一位 255 = 夹爪张开),
+       后 7 个分量是 cube 的 freejoint (位置 + 四元数)。
+       注意: 官方 panda.xml 自带的 "home" 只包含 9 个 qpos, 在加入 cube 的 freejoint 后
+       nq 变成 16, MuJoCo 会以 "invalid qpos size" 拒绝编译; 官方文件只读, 所以由
+       envs/scene_loader.py 在加载时跳过官方 keyframe, 用下面这份 16 维的 home 取代。 -->
+  <keyframe>
+    <key name="home" qpos="0 0 0 -1.57079 0 1.57079 -0.7853 0.04 0.04 0.62 0 0.46 1 0 0 0"
+      ctrl="0 0 0 -1.57079 0 1.57079 -0.7853 255"/>
+  </keyframe>
+</mujoco>

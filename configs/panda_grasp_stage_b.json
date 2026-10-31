@@ -1,0 +1,40 @@
+{
+  "task_version": "grasp_curriculum_stage_b_v1",
+  "base_reference_config": "configs/panda_grasp_stage_a.json",
+  "stage_a_checkpoint": "runs/PandaGraspCurriculum-A-v0__train_robot__1__1793362519/train_robot.checkpoint.pt",
+  "xy_half_range_m": 0.02,
+  "selected_range": 0.02,
+  "candidate_ranges_tested": [
+    0.005,
+    0.01,
+    0.015,
+    0.02
+  ],
+  "scripted_grid_success": {
+    "5mm": "9/9",
+    "10mm": "9/9",
+    "15mm": "9/9",
+    "20mm": "9/9"
+  },
+  "stage_a_zero_shot_success": {
+    "5mm": {
+      "random_25": "25/25",
+      "grid_9": "9/9"
+    },
+    "10mm": {
+      "random_25": "25/25",
+      "grid_9": "9/9"
+    },
+    "15mm": {
+      "random_25": "25/25",
+      "grid_9": "9/9"
+    },
+    "20mm": {
+      "random_25": "25/25",
+      "grid_9": "7/9"
+    }
+  },
+  "selection_reason": "所有候选 zero-shot 都 >= 90%，按规则取最大范围；说明 Stage A 本身已很鲁棒",
+  "grid_definition": "{(0,0),(±r,0),(0,±r),(±r,±r)}",
+  "created_by": "scripts/calibrate_curriculum_stage_b.py"
+}

@@ -1,0 +1,74 @@
+{
+  "task_version": "grasp_curriculum_stage_a_v1",
+  "source": {
+    "reach_checkpoint": "runs/PandaReach-v0__train_robot__1__1793349790/train_robot.checkpoint.pt",
+    "procedure": "reach approach (dist<0.05) -> DLS hold -> scripted close -> valid grasp",
+    "grasp_success_step": 45,
+    "seed": 0
+  },
+  "arm_qpos": [
+    0.037814353590145254,
+    0.08436842944946395,
+    0.026078313293086644,
+    -1.7062410963599475,
+    -0.19195572507957814,
+    1.7222657167218647,
+    -0.6363015022181884
+  ],
+  "arm_ctrl": [
+    0.037814353590145254,
+    0.08436842944946395,
+    0.026078313293086644,
+    -1.7062410963599475,
+    -0.19195572507957814,
+    1.7222657167218647,
+    -0.6363015022181884
+  ],
+  "cube_position": [
+    0.5768761759545185,
+    -0.0004571689071564619,
+    0.42250000000000004
+  ],
+  "cube_quaternion": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "finger_open_position": 0.04,
+  "gripper_open_ctrl": 255.0,
+  "reference_tcp_position": [
+    0.5770186722970162,
+    -0.00048742901216378143,
+    0.4256071882413727
+  ],
+  "measured_grasp_state": {
+    "finger_cube_penetration_m": 0.0006231719808592541,
+    "cube_table_penetration_m": 0.0,
+    "finger_table_force_N": 0.0,
+    "left_contact_force_N": 1.1348768127410478,
+    "right_contact_force_N": 1.0665009084504655,
+    "normal_opposition": -1.0000000000000002
+  },
+  "measured_at_grasp": {
+    "tcp": [
+      0.5768761759545185,
+      -0.0004571689071564619,
+      0.42543673767750745
+    ],
+    "cube": [
+      0.5773573301047689,
+      0.007089112806666511,
+      0.42944350665781705
+    ],
+    "finger_qpos": [
+      0.02226049411938191,
+      0.022262349337745062
+    ]
+  },
+  "derived": {
+    "cube_rest_z": 0.42250000000000004,
+    "table_top_z": 0.4,
+    "cube_half_height": 0.0225
+  }
+}
